@@ -1,0 +1,22 @@
+{
+  "name": "purescript-codec",
+  "homepage": "https://github.com/garyb/purescript-codec",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/garyb/purescript-codec.git"
+  },
+  "ignore": [
+    "**/.*",
+    "bower_components",
+    "node_modules",
+    "output",
+    "test",
+    "bower.json",
+    "package.json"
+  ],
+  "dependencies": {
+    "purescript-transformers": "^3.3.0",
+    "purescript-profunctor": "^3.0.0"
+  }
+}
