@@ -2,7 +2,7 @@ module Control.Monad.Codec where
 
 import Prelude
 
-import Control.Monad.Reader (ReaderT(..), ask, runReaderT)
+import Control.Monad.Reader (ReaderT(..), ask, runReaderT, mapReaderT)
 import Control.Monad.Writer (Writer, writer, execWriter, runWriter)
 import Control.Monad.Trans.Class (lift)
 import Data.Functor.Invariant (class Invariant, imapF)
@@ -95,3 +95,10 @@ basicCodec f g =
   GCodec
     (lift <<< f =<< ask)
     (\x -> writer $ Tuple x (g x))
+
+hoistCodec
+  :: forall m m' a b c d
+   . (m ~> m')
+  -> Codec m a b c d
+  -> Codec m' a b c d
+hoistCodec f = bihoistGCodec (mapReaderT f) id
