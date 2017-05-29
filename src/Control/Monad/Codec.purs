@@ -13,29 +13,29 @@ data GCodec m n a b = GCodec (m b) (a -> n b)
 
 type GCodec' m n a = GCodec m n a a
 
-instance functorCodec :: (Functor m, Functor n) => Functor (GCodec m n a) where
+instance functorGCodec :: (Functor m, Functor n) => Functor (GCodec m n a) where
   map f (GCodec dec enc) =
     GCodec (map f dec) (map f <$> enc)
 
-instance invariantCodec :: (Functor m, Functor n) => Invariant (GCodec m n a) where
+instance invariantGCodec :: (Functor m, Functor n) => Invariant (GCodec m n a) where
   imap = imapF
 
-instance applyCodec :: (Apply m, Apply n) => Apply (GCodec m n a) where
+instance applyGCodec :: (Apply m, Apply n) => Apply (GCodec m n a) where
   apply (GCodec decf encf) (GCodec decx encx) =
     GCodec (decf <*> decx) (\c -> encf c <*> encx c)
 
-instance applicativeCodec :: (Applicative m, Applicative n) => Applicative (GCodec m n a) where
+instance applicativeGCodec :: (Applicative m, Applicative n) => Applicative (GCodec m n a) where
   pure x = GCodec (pure x) (const (pure x))
 
-instance bindCodec :: (Bind m, Bind n) => Bind (GCodec m n a) where
+instance bindGCodec :: (Bind m, Bind n) => Bind (GCodec m n a) where
   bind (GCodec dec enc) f =
     GCodec
       (dec >>= \x -> case f x of GCodec dec' _ -> dec')
       (\c -> enc c >>= \x -> case f x of GCodec _ enc' -> enc' c)
 
-instance monadCodec :: (Monad m, Monad n) => Monad (GCodec m n a)
+instance monadGCodec :: (Monad m, Monad n) => Monad (GCodec m n a)
 
-instance profunctorCodec :: (Functor m, Functor n) => Profunctor (GCodec m n) where
+instance profunctorGCodec :: (Functor m, Functor n) => Profunctor (GCodec m n) where
   dimap f g (GCodec dec enc) =
     GCodec (map g dec) (map g <<< enc <<< f)
 
