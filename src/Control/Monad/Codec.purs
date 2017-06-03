@@ -67,6 +67,11 @@ bihoistGCodec f g (GCodec dec enc) = GCodec (f dec) (map g enc)
 
 infixl 5 lmap as <~>
 
+adapt :: forall m n a b c. Bind n => (a -> n b) -> GCodec m n b c -> GCodec m n a c
+adapt f (GCodec dec enc) = GCodec dec enc'
+  where
+  enc' = f >=> enc
+
 type Codec m a b c d = GCodec (ReaderT a m) (Writer b) c d
 
 type Codec' m a b = Codec m a a b b
