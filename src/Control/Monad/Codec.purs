@@ -2,6 +2,7 @@ module Control.Monad.Codec where
 
 import Prelude
 
+import Control.Alternative (class Alt, class Alternative, class Plus, empty, (<|>))
 import Control.Monad.Reader (ReaderT(..), ask, runReaderT, mapReaderT)
 import Control.Monad.Writer (Writer, writer, execWriter, runWriter)
 import Control.Monad.Trans.Class (lift)
@@ -38,6 +39,17 @@ instance monadGCodec :: (Monad m, Monad n) => Monad (GCodec m n a)
 instance profunctorGCodec :: (Functor m, Functor n) => Profunctor (GCodec m n) where
   dimap f g (GCodec dec enc) =
     GCodec (map g dec) (map g <<< enc <<< f)
+
+instance altGCodec :: (Alt m, Alt n) => Alt (GCodec m n a) where
+  alt (GCodec decx encx) (GCodec decy ency) = GCodec dec enc
+    where
+    dec = decx <|> decy
+    enc a = encx a <|> ency a
+
+instance plusGCodec :: (Plus m, Plus n) => Plus (GCodec m n a) where
+  empty = GCodec empty (const empty)
+
+instance alternativeGCodec :: (Alternative m, Alternative n) => Alternative (GCodec m n a)
 
 gdecoder :: forall m n a b. GCodec m n a b -> m b
 gdecoder (GCodec f _) = f
