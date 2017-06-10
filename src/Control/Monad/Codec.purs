@@ -10,9 +10,8 @@ import Data.Functor.Invariant (class Invariant, imapF)
 import Data.Profunctor (class Profunctor, lmap)
 import Data.Tuple (Tuple(..))
 
+-- | A general type for codecs.
 data GCodec m n a b = GCodec (m b) (a -> n b)
-
-type GCodec' m n a = GCodec m n a a
 
 instance functorGCodec :: (Functor m, Functor n) => Functor (GCodec m n a) where
   map f (GCodec dec enc) =
@@ -37,26 +36,27 @@ instance bindGCodec :: (Bind m, Bind n) => Bind (GCodec m n a) where
 instance monadGCodec :: (Monad m, Monad n) => Monad (GCodec m n a)
 
 instance profunctorGCodec :: (Functor m, Functor n) => Profunctor (GCodec m n) where
-  dimap f g (GCodec dec enc) =
-    GCodec (map g dec) (map g <<< enc <<< f)
+  dimap f g (GCodec dec enc) = GCodec (map g dec) (map g <<< enc <<< f)
 
 instance altGCodec :: (Alt m, Alt n) => Alt (GCodec m n a) where
-  alt (GCodec decx encx) (GCodec decy ency) = GCodec dec enc
-    where
-    dec = decx <|> decy
-    enc a = encx a <|> ency a
+  alt (GCodec decx encx) (GCodec decy ency) =
+    GCodec (decx <|> decy) (\a -> encx a <|> ency a)
 
 instance plusGCodec :: (Plus m, Plus n) => Plus (GCodec m n a) where
   empty = GCodec empty (const empty)
 
 instance alternativeGCodec :: (Alternative m, Alternative n) => Alternative (GCodec m n a)
 
-gdecoder :: forall m n a b. GCodec m n a b -> m b
-gdecoder (GCodec f _) = f
+-- | Extracts the decoder part of a `GCodec`
+decoder :: forall m n a b. GCodec m n a b -> m b
+decoder (GCodec f _) = f
 
-gencoder :: forall m n a b. GCodec m n a b -> a -> n b
-gencoder (GCodec _ f) = f
+-- | Extracts the encoder part of a `GCodec`
+encoder :: forall m n a b. GCodec m n a b -> a -> n b
+encoder (GCodec _ f) = f
 
+-- | Changes the `m` and `n` functors used in the codec using the specified
+-- | natural transformations.
 bihoistGCodec
   :: forall m m' n n' a b
    . (m ~> m')
@@ -65,25 +65,22 @@ bihoistGCodec
   -> GCodec m' n' a b
 bihoistGCodec f g (GCodec dec enc) = GCodec (f dec) (map g enc)
 
-infixl 5 lmap as <~>
-
-adapt :: forall m n a b c. Bind n => (a -> n b) -> GCodec m n b c -> GCodec m n a c
-adapt f (GCodec dec enc) = GCodec dec enc'
-  where
-  enc' = f >=> enc
+-- | `GCodec` is defined as a `Profunctor` so that `lmap` can be used to target
+-- | specific fields when defining a codec for a product type. This operator
+-- | is a convenience for that:
+-- |
+-- | ``` purescript
+-- | tupleCodec =
+-- |   Tuple
+-- |     <$> fst ~ fstCodec
+-- |     <*> snd ~ sndCodec
+-- | ```
+infixl 5 lmap as ~
 
 type Codec m a b c d = GCodec (ReaderT a m) (Writer b) c d
 
-type Codec' m a b = Codec m a a b b
-
-decoder :: forall m a b c d. Codec m a b c d -> ReaderT a m d
-decoder (GCodec f _) = f
-
-encoder :: forall m a b c d. Codec m a b c d -> c -> Writer b d
-encoder (GCodec _ f) = f
-
 decode :: forall m a b c d. Codec m a b c d -> a -> m d
-decode codec = runReaderT (decoder codec)
+decode = runReaderT <<< decoder
 
 encode :: forall m a b c d. Codec m a b c d -> c -> b
 encode codec = execWriter <<< encoder codec
@@ -97,21 +94,9 @@ composeCodec
 composeCodec (GCodec decf encf) (GCodec decg encg) =
   GCodec
     (ReaderT \x -> runReaderT decf =<< runReaderT decg x)
-    (\c -> do
+    (\c ->
       let (Tuple w x) = runWriter (encf c)
-      let y = execWriter (encg x)
-      writer $ Tuple w y)
-
-basicCodec
-  :: forall m a b
-   . Monad m
-  => (a -> m b)
-  -> (b -> a)
-  -> Codec' m a b
-basicCodec f g =
-  GCodec
-    (lift <<< f =<< ask)
-    (\x -> writer $ Tuple x (g x))
+      in writer $ Tuple w (execWriter (encg x)))
 
 hoistCodec
   :: forall m m' a b c d
@@ -119,3 +104,16 @@ hoistCodec
   -> Codec m a b c d
   -> Codec m' a b c d
 hoistCodec f = bihoistGCodec (mapReaderT f) id
+
+type BasicCodec m a b = Codec m a a b b
+
+basicCodec
+  :: forall m a b
+   . Monad m
+  => (a -> m b)
+  -> (b -> a)
+  -> BasicCodec m a b
+basicCodec f g =
+  GCodec
+    (lift <<< f =<< ask)
+    (\x -> writer $ Tuple x (g x))
