@@ -84,6 +84,14 @@ decode = runReaderT <<< decoder
 encode :: forall m a b c d. Codec m a b c d -> c -> b
 encode codec = execWriter <<< encoder codec
 
+mapCodec :: forall m a b c d. Bind m => (a -> m b) -> (b -> a) -> Codec m c d a a -> Codec m c d b b
+mapCodec f g (GCodec decf encf) = GCodec dec enc
+  where
+  dec = ReaderT \x -> f =<< runReaderT decf x
+  enc a =
+    let (Tuple w x) = runWriter (encf (g a))
+    in writer $ Tuple a x
+
 composeCodec
   :: forall a d f b e c m
    . Bind m
