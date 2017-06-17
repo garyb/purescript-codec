@@ -3,9 +3,8 @@ module Control.Monad.Codec where
 import Prelude
 
 import Control.Alternative (class Alt, class Alternative, class Plus, empty, (<|>))
-import Control.Monad.Reader (ReaderT(..), ask, runReaderT, mapReaderT)
+import Control.Monad.Reader (ReaderT(..), mapReaderT, runReaderT)
 import Control.Monad.Writer (Writer, writer, execWriter, runWriter)
-import Control.Monad.Trans.Class (lift)
 import Data.Functor.Invariant (class Invariant, imapF)
 import Data.Profunctor (class Profunctor, lmap)
 import Data.Tuple (Tuple(..))
@@ -109,11 +108,7 @@ type BasicCodec m a b = Codec m a a b b
 
 basicCodec
   :: forall m a b
-   . Monad m
-  => (a -> m b)
+   . (a -> m b)
   -> (b -> a)
   -> BasicCodec m a b
-basicCodec f g =
-  GCodec
-    (lift <<< f =<< ask)
-    (\x -> writer $ Tuple x (g x))
+basicCodec f g = GCodec (ReaderT f) (\x -> writer $ Tuple x (g x))
