@@ -97,6 +97,8 @@ composeCodec (GCodec decf encf) (GCodec decg encg) =
       let (Tuple w x) = runWriter (encf c)
       in writer $ Tuple w (execWriter (encg x)))
 
+infixr 8 composeCodec as <~<
+
 hoistCodec
   :: forall m m' a b c d
    . (m ~> m')
