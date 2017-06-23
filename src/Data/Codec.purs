@@ -1,4 +1,4 @@
-module Control.Monad.Codec where
+module Data.Codec where
 
 import Prelude
 
