@@ -125,6 +125,16 @@ composeCodec (GCodec decf encf) (GCodec decg encg) =
 
 infixr 8 composeCodec as <~<
 
+composeCodecFlipped
+  ∷ ∀ a d f b e c m
+  . Bind m
+  ⇒ Codec m a b c d
+  → Codec m d c e f
+  → Codec m a b e f
+composeCodecFlipped = flip composeCodec
+
+infixr 8 composeCodecFlipped as >~>
+
 hoistCodec ∷ ∀ m m' a b c d. (m ~> m') → Codec m a b c d → Codec m' a b c d
 hoistCodec f = bihoistGCodec (mapReaderT f) id
 
