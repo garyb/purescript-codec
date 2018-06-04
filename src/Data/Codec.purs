@@ -9,7 +9,7 @@ import Control.MonadPlus (class MonadPlus)
 import Control.MonadZero (class MonadZero)
 import Data.Functor.Invariant (class Invariant, imapF)
 import Data.Newtype (un)
-import Data.Profunctor (class Profunctor, dimap, lmap)
+import Data.Profunctor (class Profunctor, dimap, lcmap)
 import Data.Profunctor.Star (Star(..))
 import Data.Tuple (Tuple(..))
 
@@ -86,7 +86,7 @@ bihoistGCodec f g (GCodec dec (Star h)) = GCodec (f dec) (Star (g <<< h))
 -- |     <$> fst ~ fstCodec
 -- |     <*> snd ~ sndCodec
 -- | ```
-infixl 5 lmap as ~
+infixl 5 lcmap as ~
 
 type Codec m a b c d = GCodec (ReaderT a m) (Writer b) c d
 
@@ -136,7 +136,7 @@ composeCodecFlipped = flip composeCodec
 infixr 8 composeCodecFlipped as >~>
 
 hoistCodec ∷ ∀ m m' a b c d. (m ~> m') → Codec m a b c d → Codec m' a b c d
-hoistCodec f = bihoistGCodec (mapReaderT f) id
+hoistCodec f = bihoistGCodec (mapReaderT f) identity
 
 type BasicCodec m a b = Codec m a a b b
 
