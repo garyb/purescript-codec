@@ -76,7 +76,7 @@ bihoistGCodec
   → GCodec m' n' a b
 bihoistGCodec f g (GCodec dec (Star h)) = GCodec (f dec) (Star (g <<< h))
 
--- | `GCodec` is defined as a `Profunctor` so that `lmap` can be used to target
+-- | `GCodec` is defined as a `Profunctor` so that `lcmap` can be used to target
 -- | specific fields when defining a codec for a product type. This operator
 -- | is a convenience for that:
 -- |
