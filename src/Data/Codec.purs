@@ -90,11 +90,14 @@ infixl 5 lcmap as ~
 
 type Codec m a b c d = GCodec (ReaderT a m) (Writer b) c d
 
+codec ∷ ∀ m a b c d. (a → m d) → (c → Tuple d b) → Codec m a b c d
+codec dec enc = GCodec (ReaderT dec) (Star \x → writer (enc x))
+
 decode ∷ ∀ m a b c d. Codec m a b c d → a → m d
 decode = runReaderT <<< decoder
 
 encode ∷ ∀ m a b c d. Codec m a b c d → c → b
-encode codec = execWriter <<< un Star (encoder codec)
+encode c = execWriter <<< un Star (encoder c)
 
 mapCodec
   ∷ ∀ m a b c d
