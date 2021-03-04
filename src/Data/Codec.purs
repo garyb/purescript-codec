@@ -6,7 +6,6 @@ import Control.Alternative (class Alt, class Alternative, class Plus, empty, (<|
 import Control.Monad.Reader (ReaderT(..), mapReaderT, runReaderT)
 import Control.Monad.Writer (Writer, writer, execWriter, runWriter)
 import Control.MonadPlus (class MonadPlus)
-import Control.MonadZero (class MonadZero)
 import Data.Functor.Invariant (class Invariant, imapF)
 import Data.Newtype (un)
 import Data.Profunctor (class Profunctor, dimap, lcmap)
@@ -14,6 +13,7 @@ import Data.Profunctor.Star (Star(..))
 import Data.Tuple (Tuple(..))
 
 -- | A general type for codecs.
+data GCodec :: (Type -> Type) -> (Type -> Type) -> Type -> Type -> Type
 data GCodec m n a b = GCodec (m b) (Star n a b)
 
 instance functorGCodec ∷ (Functor m, Functor n) ⇒ Functor (GCodec m n a) where
@@ -49,8 +49,6 @@ instance plusGCodec ∷ (Plus m, Plus n) ⇒ Plus (GCodec m n a) where
   empty = GCodec empty empty
 
 instance alternativeGCodec ∷ (Alternative m, Alternative n) ⇒ Alternative (GCodec m n a)
-
-instance monadZeroGCodec ∷ (MonadZero m, MonadZero n) ⇒ MonadZero (GCodec m n a)
 
 instance monadPlusGCodec ∷ (MonadPlus m, MonadPlus n) ⇒ MonadPlus (GCodec m n a)
 
