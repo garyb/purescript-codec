@@ -4,7 +4,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git://github.com/garyb/purescript-codec.git"
+    "url": "https://github.com/garyb/purescript-codec.git"
   },
   "ignore": [
     "**/.*",
@@ -16,7 +16,7 @@
     "package.json"
   ],
   "dependencies": {
-    "purescript-transformers": "^4.0.0",
-    "purescript-profunctor": "^4.0.0"
+    "purescript-transformers": "^5.0.0",
+    "purescript-profunctor": "^5.0.0"
   }
 }
