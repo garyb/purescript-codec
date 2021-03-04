@@ -9,10 +9,9 @@ script:
   - bower install --production
   - npm run -s build
   - bower install
-  - npm -s test
 after_success:
-- >-
-  test $TRAVIS_TAG &&
-  git stash &&
-  echo $GITHUB_TOKEN | pulp login &&
-  echo y | pulp publish --no-push
+  - >-
+    test $TRAVIS_TAG &&
+    git stash &&
+    echo $GITHUB_TOKEN | pulp login &&
+    echo y | pulp publish --no-push
