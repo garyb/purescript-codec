@@ -1,7 +1,7 @@
 # purescript-codec
 
 [![Latest release](http://img.shields.io/github/release/garyb/purescript-codec.svg)](https://github.com/garyb/purescript-codec/releases)
-[![Build Status](https://travis-ci.org/garyb/purescript-codec.svg?branch=master)](https://travis-ci.org/garyb/purescript-codec)
+![Build Status](https://github.com/garyb/purescript-codec/actions/workflows/ci.yml/badge.svg)
 
 General purpose bi-directional codecs.
 
