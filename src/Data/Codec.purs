@@ -53,7 +53,7 @@ instance alternativeGCodec ∷ (Alternative m, Alternative n) ⇒ Alternative (G
 instance monadPlusGCodec ∷ (MonadPlus m, MonadPlus n) ⇒ MonadPlus (GCodec m n a)
 
 instance semigroupoidGCodec ∷ Bind n ⇒ Semigroupoid (GCodec m n) where
-  compose (GCodec decx encx) (GCodec decy ency) =
+  compose (GCodec decx encx) (GCodec _ ency) =
     GCodec decx (compose encx ency)
 
 -- | Extracts the decoder part of a `GCodec`
@@ -108,7 +108,7 @@ mapCodec f g (GCodec decf encf) = GCodec dec enc
   where
   dec = ReaderT \x → f =<< runReaderT decf x
   enc = Star \a →
-    let (Tuple w x) = runWriter (un Star encf (g a))
+    let (Tuple _ x) = runWriter (un Star encf (g a))
     in writer $ Tuple a x
 
 composeCodec
