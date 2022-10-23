@@ -1,80 +1,61 @@
 module Data.Codec where
 
-import Prelude
+import Prelude hiding (compose, identity)
 
-import Control.Alternative (class Alt, class Alternative, class Plus, empty, (<|>))
-import Control.Monad.Reader (ReaderT(..), mapReaderT, runReaderT)
-import Control.Monad.Writer (Writer, writer, execWriter, runWriter)
-import Control.MonadPlus (class MonadPlus)
+import Control.Category as Category
+import Data.Bifunctor (lmap)
 import Data.Functor.Invariant (class Invariant, imapF)
-import Data.Newtype (un)
-import Data.Profunctor (class Profunctor, dimap, lcmap)
-import Data.Profunctor.Star (Star(..))
-import Data.Tuple (Tuple(..))
+import Data.Profunctor (class Profunctor, lcmap)
+import Data.Tuple (Tuple(..), fst)
 
--- | A general type for codecs.
-data GCodec :: (Type -> Type) -> (Type -> Type) -> Type -> Type -> Type
-data GCodec m n a b = GCodec (m b) (Star n a b)
+data Codec m a b c d = Codec (a → m d) (c → Tuple b d)
 
-instance functorGCodec ∷ (Functor m, Functor n) ⇒ Functor (GCodec m n a) where
-  map f (GCodec dec enc) =
-    GCodec (map f dec) (map f enc)
+instance Functor m ⇒ Functor (Codec m a b c) where
+  map f (Codec g h) = Codec (map f <<< g) (map f <<< h)
 
-instance invariantGCodec ∷ (Functor m, Functor n) ⇒ Invariant (GCodec m n a) where
+instance Functor m ⇒ Invariant (Codec m a b c) where
   imap = imapF
 
-instance applyGCodec ∷ (Apply m, Apply n) ⇒ Apply (GCodec m n a) where
-  apply (GCodec decf encf) (GCodec decx encx) =
-    GCodec (decf <*> decx) (encf <*> encx)
+instance (Apply m, Semigroup b) ⇒ Apply (Codec m a b c) where
+  apply (Codec f g) (Codec h i) = Codec (\a → f a <*> h a) (\c → g c <*> i c)
 
-instance applicativeGCodec ∷ (Applicative m, Applicative n) ⇒ Applicative (GCodec m n a) where
-  pure x =
-    GCodec (pure x) (pure x)
+instance (Applicative m, Monoid b) ⇒ Applicative (Codec m a b c) where
+  pure x = Codec (const (pure x)) (const (pure x))
 
-instance bindGCodec ∷ (Bind m, Bind n) ⇒ Bind (GCodec m n a) where
-  bind (GCodec dec enc) f =
-    GCodec (dec >>= f >>> decoder) (enc >>= f >>> encoder)
+instance Functor m ⇒ Profunctor (Codec m a b) where
+  dimap f g (Codec h i) = Codec (map g <<< h) (map g <<< i <<< f)
 
-instance monadGCodec ∷ (Monad m, Monad n) ⇒ Monad (GCodec m n a)
+codec ∷ ∀ m a b d. (a → m d) → (d → b) → Codec m a b d d
+codec f g = Codec f (\b → Tuple (g b) b)
 
-instance profunctorGCodec ∷ (Functor m, Functor n) ⇒ Profunctor (GCodec m n) where
-  dimap f g (GCodec dec enc) =
-    GCodec (map g dec) (dimap f g enc)
+type Codec' m a b = Codec m a a b b
 
-instance altGCodec ∷ (Alt m, Alt n) ⇒ Alt (GCodec m n a) where
-  alt (GCodec decx encx) (GCodec decy ency) =
-    GCodec (decx <|> decy) (encx <|> ency)
+codec' ∷ ∀ m a b. (a → m b) → (b → a) → Codec' m a b
+codec' f g = Codec f (\b → Tuple (g b) b)
 
-instance plusGCodec ∷ (Plus m, Plus n) ⇒ Plus (GCodec m n a) where
-  empty = GCodec empty empty
+decode ∷ ∀ m a b c d. Codec m a b c d → a → m d
+decode (Codec f _) = f
 
-instance alternativeGCodec ∷ (Alternative m, Alternative n) ⇒ Alternative (GCodec m n a)
+encode ∷ ∀ m a b c d. Codec m a b c d → c → b
+encode (Codec _ f) = fst <<< f
 
-instance monadPlusGCodec ∷ (MonadPlus m, MonadPlus n) ⇒ MonadPlus (GCodec m n a)
+hoist ∷ ∀ m m' a b c d. (m ~> m') → Codec m a b c d → Codec m' a b c d
+hoist f (Codec g h) = Codec (f <<< g) h
 
-instance semigroupoidGCodec ∷ Bind n ⇒ Semigroupoid (GCodec m n) where
-  compose (GCodec decx encx) (GCodec _ ency) =
-    GCodec decx (compose encx ency)
+identity ∷ ∀ m a. Applicative m ⇒ Codec m a a a a
+identity = codec pure Category.identity
 
--- | Extracts the decoder part of a `GCodec`
-decoder ∷ ∀ m n a b. GCodec m n a b → m b
-decoder (GCodec f _) = f
+compose ∷ ∀ a d f b e c m. Bind m ⇒ Codec m d c e f → Codec m a b c d → Codec m a b e f
+compose (Codec f g) (Codec h i) = Codec (f <=< h) (lmap (fst <<< i) <<< g)
 
--- | Extracts the encoder part of a `GCodec`
-encoder ∷ ∀ m n a b. GCodec m n a b → Star n a b
-encoder (GCodec _ f) = f
+infixr 8 compose as <~<
 
--- | Changes the `m` and `n` functors used in the codec using the specified
--- | natural transformations.
-bihoistGCodec
-  ∷ ∀ m m' n n' a b
-   . (m ~> m')
-  → (n ~> n')
-  → GCodec m n a b
-  → GCodec m' n' a b
-bihoistGCodec f g (GCodec dec (Star h)) = GCodec (f dec) (Star (g <<< h))
+composeFlipped ∷ ∀ a d f b e c m. Bind m ⇒ Codec m a b c d → Codec m d c e f → Codec m a b e f
+composeFlipped = flip compose
 
--- | `GCodec` is defined as a `Profunctor` so that `lcmap` can be used to target
+infixr 8 composeFlipped as >~>
+
+-- | `Codec` is defined as a `Profunctor` so that `lcmap` can be used to target
 -- | specific fields when defining a codec for a product type. This operator
 -- | is a convenience for that:
 -- |
@@ -85,61 +66,3 @@ bihoistGCodec f g (GCodec dec (Star h)) = GCodec (f dec) (Star (g <<< h))
 -- |     <*> snd ~ sndCodec
 -- | ```
 infixl 5 lcmap as ~
-
-type Codec m a b c d = GCodec (ReaderT a m) (Writer b) c d
-
-codec ∷ ∀ m a b c d. (a → m d) → (c → Tuple d b) → Codec m a b c d
-codec dec enc = GCodec (ReaderT dec) (Star \x → writer (enc x))
-
-decode ∷ ∀ m a b c d. Codec m a b c d → a → m d
-decode = runReaderT <<< decoder
-
-encode ∷ ∀ m a b c d. Codec m a b c d → c → b
-encode c = execWriter <<< un Star (encoder c)
-
-mapCodec
-  ∷ ∀ m a b c d
-  . Bind m
-  ⇒ (a → m b)
-  → (b → a)
-  → Codec m c d a a
-  → Codec m c d b b
-mapCodec f g (GCodec decf encf) = GCodec dec enc
-  where
-  dec = ReaderT \x → f =<< runReaderT decf x
-  enc = Star \a →
-    let (Tuple _ x) = runWriter (un Star encf (g a))
-    in writer $ Tuple a x
-
-composeCodec
-  ∷ ∀ a d f b e c m
-  . Bind m
-  ⇒ Codec m d c e f
-  → Codec m a b c d
-  → Codec m a b e f
-composeCodec (GCodec decf encf) (GCodec decg encg) =
-  GCodec
-    (ReaderT \x → runReaderT decf =<< runReaderT decg x)
-    (Star \c →
-      let (Tuple w x) = runWriter (un Star encf c)
-      in writer $ Tuple w (execWriter (un Star encg x)))
-
-infixr 8 composeCodec as <~<
-
-composeCodecFlipped
-  ∷ ∀ a d f b e c m
-  . Bind m
-  ⇒ Codec m a b c d
-  → Codec m d c e f
-  → Codec m a b e f
-composeCodecFlipped = flip composeCodec
-
-infixr 8 composeCodecFlipped as >~>
-
-hoistCodec ∷ ∀ m m' a b c d. (m ~> m') → Codec m a b c d → Codec m' a b c d
-hoistCodec f = bihoistGCodec (mapReaderT f) identity
-
-type BasicCodec m a b = Codec m a a b b
-
-basicCodec ∷ ∀ m a b. (a → m b) → (b → a) → BasicCodec m a b
-basicCodec f g = GCodec (ReaderT f) (Star \x → writer $ Tuple x (g x))

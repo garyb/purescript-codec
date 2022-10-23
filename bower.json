@@ -16,7 +16,7 @@
     "package.json"
   ],
   "dependencies": {
-    "purescript-transformers": "^6.0.0",
-    "purescript-profunctor": "^6.0.0"
+    "purescript-profunctor": "^6.0.0",
+    "purescript-bifunctors": "^6.0.0"
   }
 }
