@@ -25,7 +25,7 @@ instance (Applicative m, Monoid b) ⇒ Applicative (Codec m a b c) where
 instance Functor m ⇒ Profunctor (Codec m a b) where
   dimap f g (Codec h i) = Codec (map g <<< h) (map g <<< i <<< f)
 
-codec ∷ ∀ m a b d. (a → m d) → (d → b) → Codec m a b d d
+codec ∷ ∀ m a b c. (a → m c) → (c → b) → Codec m a b c c
 codec f g = Codec f (\b → Tuple (g b) b)
 
 type Codec' m a b = Codec m a a b b
