@@ -2,6 +2,7 @@ module Data.Codec where
 
 import Prelude hiding (compose, identity)
 
+import Control.Alt (class Alt, (<|>))
 import Control.Category as Category
 import Data.Bifunctor (lmap)
 import Data.Functor.Invariant (class Invariant, imapF)
@@ -15,6 +16,9 @@ instance Functor m ⇒ Functor (Codec m a b c) where
 
 instance Functor m ⇒ Invariant (Codec m a b c) where
   imap = imapF
+
+instance Alt m ⇒ Alt (Codec m a b c) where
+  alt (Codec f _) (Codec h i) = Codec (\a → f a <|> h a) i
 
 instance (Apply m, Semigroup b) ⇒ Apply (Codec m a b c) where
   apply (Codec f g) (Codec h i) = Codec (\a → f a <*> h a) (\c → g c <*> i c)
@@ -44,6 +48,12 @@ hoist f (Codec g h) = Codec (f <<< g) h
 
 identity ∷ ∀ m a. Applicative m ⇒ Codec m a a a a
 identity = codec pure Category.identity
+
+fix ∷ ∀ m a b. (Codec' m a b → Codec' m a b) → Codec' m a b
+fix f =
+  codec
+    (\x → decode (f (fix f)) x)
+    (\x → encode (f (fix f)) x)
 
 compose ∷ ∀ a d f b e c m. Bind m ⇒ Codec m d c e f → Codec m a b c d → Codec m a b e f
 compose (Codec f g) (Codec h i) = Codec (f <=< h) (lmap (fst <<< i) <<< g)
