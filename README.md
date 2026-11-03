@@ -8,7 +8,7 @@ General purpose bi-directional codecs.
 ## Installation
 
 ```
-bower install purescript-codec
+spago install codec
 ```
 
 ## Documentation
